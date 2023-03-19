@@ -1,0 +1,93 @@
+name: Build
+
+on:
+  release:
+    types:
+      - created
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        required: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get Release Version Tag
+        if: github.event_name == 'release'
+        run: echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
+
+      - name: Get Specific Version Tag
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $env:GITHUB_ENV
+
+      - name: Download Server
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          mkdir server
+          server_link=https://minecraft.azureedge.net/bin-win/bedrock-server-${{ env.VERSION }}.zip
+          curl -L -o server.zip "$server_link"
+          unzip server.zip -d server/ > /dev/null
+        shell: bash
+
+      - name: Build Library
+        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        run: |
+          .\LibraryBuilder.exe server
+          if (!(Test-Path -Path "bedrock_server_api.lib")) { 
+            Write-Host "bedrock_server_api.lib not found"
+            exit 1
+          }
+          if (!(Test-Path -Path "bedrock_server_var.lib")) { 
+            Write-Host "bedrock_server_var.lib not found"
+            exit 1
+          }
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir artifacts
+          cp bedrock_server_api.lib artifacts/
+          cp bedrock_server_var.lib artifacts/
+          mv artifacts bdslibrary-${{ env.VERSION }}-windows-amd64
+          mkdir artifacts
+          mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bdslibrary-${{ env.VERSION }}-windows-amd64
+          path: artifacts
+
+  upload-to-release:
+    name: Upload to Release
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+      - name: Get Version
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Zip Artifacts
+        run: |
+          mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts
+          mv artifacts/bdslibrary-${{ env.VERSION }}-windows-amd64 .
+          zip -r bdslibrary-${{ env.VERSION }}-windows-amd64.zip ./bdslibrary-${{ env.VERSION }}-windows-amd64
+        shell: bash
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            bdslibrary-${{ env.VERSION }}-windows-amd64.zip
+            bdslibrary-${{ env.VERSION }}-windows-amd64/bedrock_server_api.lib
+            bdslibrary-${{ env.VERSION }}-windows-amd64/bedrock_server_var.lib
