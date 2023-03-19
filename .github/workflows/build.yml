@@ -89,5 +89,3 @@ jobs:
         with:
           files: |
             bdslibrary-${{ env.VERSION }}-windows-amd64.zip
-            bdslibrary-${{ env.VERSION }}-windows-amd64/bedrock_server_api.lib
-            bdslibrary-${{ env.VERSION }}-windows-amd64/bedrock_server_var.lib
