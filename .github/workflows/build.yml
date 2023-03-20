@@ -72,11 +72,11 @@ jobs:
     steps:
       - name: Get Release Version Tag
         if: github.event_name == 'release'
-        run: echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
 
       - name: Get Specific Version Tag
         if: github.event_name == 'workflow_dispatch'
-        run: echo "VERSION=${{ github.event.inputs.version }}" >> $env:GITHUB_ENV
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
       - name: Download Artifacts
         uses: actions/download-artifact@v3
@@ -86,7 +86,6 @@ jobs:
           mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts
           mv artifacts/bdslibrary-${{ env.VERSION }}-windows-amd64 .
           zip -r bdslibrary-${{ env.VERSION }}-windows-amd64.zip ./bdslibrary-${{ env.VERSION }}-windows-amd64
-          # calc sha256 and save to github env
           echo "SHA256=$(sha256sum bdslibrary-${{ env.VERSION }}-windows-amd64.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
         shell: bash
 
