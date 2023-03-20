@@ -82,6 +82,8 @@ jobs:
           mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts
           mv artifacts/bdslibrary-${{ env.VERSION }}-windows-amd64 .
           zip -r bdslibrary-${{ env.VERSION }}-windows-amd64.zip ./bdslibrary-${{ env.VERSION }}-windows-amd64
+          # calc sha256 and save to github env
+          echo "SHA256=$(sha256sum bdslibrary-${{ env.VERSION }}-windows-amd64.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
         shell: bash
 
       - name: Upload Release Assets
@@ -89,3 +91,7 @@ jobs:
         with:
           files: |
             bdslibrary-${{ env.VERSION }}-windows-amd64.zip
+          body: |
+            |                        File                     |       SHA256      |
+            | ----------------------------------------------- | ----------------- |
+            | bdslibrary-${{ env.VERSION }}-windows-amd64.zip | ${{ env.SHA256 }} |
