@@ -95,6 +95,6 @@ jobs:
           files: |
             bdslibrary-${{ env.VERSION }}-windows-amd64.zip
           body: |
-            |                        File                     |       SHA256      |
-            | ----------------------------------------------- | ----------------- |
+            | File                                            | SHA256            |
+            | :---------------------------------------------- | :---------------- |
             | bdslibrary-${{ env.VERSION }}-windows-amd64.zip | ${{ env.SHA256 }} |
