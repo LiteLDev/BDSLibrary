@@ -1,7 +1,9 @@
 name: Build
 
 env:
-  PE_EDITOR_VERSION: v3.1.1
+  PE_EDITOR_VERSION: v3.3.0
+  VERSION: "v0.0.0"
+  SHA256: ""
 
 on:
   release:
@@ -37,7 +39,7 @@ jobs:
 
       - name: Download PeEditor
         if: steps.cache-peeditor.outputs.cache-hit != 'true'
-        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        working-directory: ${{ github.workspace }}
         run: |
           curl -L -o PeEditor.exe https://github.com/LiteLDev/PeEditor/releases/download/${{ env.PE_EDITOR_VERSION }}/PeEditor.exe
           if (!(Test-Path -Path "PeEditor.exe")) { 
@@ -46,7 +48,7 @@ jobs:
           }
 
       - name: Download Server
-        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        working-directory: ${{ github.workspace }}
         run: |
           mkdir server
           server_link=https://minecraft.azureedge.net/bin-win/bedrock-server-${{ env.VERSION }}.zip
@@ -55,7 +57,7 @@ jobs:
         shell: bash
 
       - name: Build Library
-        working-directory: ${{ env.GITHUB_WORKSPACE }}
+        working-directory: ${{ github.workspace }}
         run: |
           ./PeEditor.exe --pdb=./server/bedrock_server.pdb -l
           if (!(Test-Path -Path "bedrock_server_api.lib")) { 
