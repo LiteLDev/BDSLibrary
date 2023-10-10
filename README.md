@@ -1,6 +1,6 @@
 # BDS Library
 
-*A repo to store generated BDS Libraries for LiteLoader*
+*A repo to store generated BDS Libraries for LeviLamina*
 
 # License
 
