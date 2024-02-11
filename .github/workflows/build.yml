@@ -1,0 +1,121 @@
+name: Build
+
+env:
+  PE_EDITOR_VERSION: v3.3.0
+  VERSION: "v0.0.0"
+  SHA256: ""
+
+on:
+  release:
+    types:
+      - created
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        required: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get Release Version Tag
+        if: github.event_name == 'release'
+        run: echo "VERSION=${{ github.ref_name }}" >> $env:GITHUB_ENV
+
+      - name: Get Specific Version Tag
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $env:GITHUB_ENV
+
+      - name: Cache PeEditor
+        id: cache-peeditor
+        uses: actions/cache@v3
+        with:
+          path: PeEditor.exe
+          key: PeEditor-${{ env.PE_EDITOR_VERSION }}
+
+      - name: Download PeEditor
+        if: steps.cache-peeditor.outputs.cache-hit != 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          curl -L -o PeEditor.exe https://github.com/LiteLDev/PeEditor/releases/download/${{ env.PE_EDITOR_VERSION }}/PeEditor.exe
+          if (!(Test-Path -Path "PeEditor.exe")) { 
+            Write-Host "Failed to download PeEditor.exe"
+            exit 1
+          }
+
+      - name: Download Server
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir server
+          server_link=https://minecraft.azureedge.net/bin-win/bedrock-server-${{ env.VERSION }}.zip
+          curl -L -o server.zip "$server_link"
+          unzip server.zip -d server/ > /dev/null
+        shell: bash
+
+      - name: Build Library
+        working-directory: ${{ github.workspace }}
+        run: |
+          ./PeEditor.exe --pdb=./server/bedrock_server.pdb -l
+          if (!(Test-Path -Path "bedrock_server_api.lib")) { 
+            Write-Host "bedrock_server_api.lib not found"
+            exit 1
+          }
+          if (!(Test-Path -Path "bedrock_server_var.lib")) { 
+            Write-Host "bedrock_server_var.lib not found"
+            exit 1
+          }
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir artifacts
+          cp bedrock_server_api.lib artifacts/
+          cp bedrock_server_var.lib artifacts/
+          mv artifacts bdslibrary-${{ env.VERSION }}-windows-amd64
+          mkdir artifacts
+          mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bdslibrary-${{ env.VERSION }}-windows-amd64
+          path: artifacts
+
+  upload-to-release:
+    name: Upload to Release
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Release Version Tag
+        if: github.event_name == 'release'
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Get Specific Version Tag
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Zip Artifacts
+        run: |
+          mv bdslibrary-${{ env.VERSION }}-windows-amd64 artifacts
+          mv artifacts/bdslibrary-${{ env.VERSION }}-windows-amd64 .
+          zip -r bdslibrary-${{ env.VERSION }}-windows-amd64.zip ./bdslibrary-${{ env.VERSION }}-windows-amd64
+          echo "SHA256=$(sha256sum bdslibrary-${{ env.VERSION }}-windows-amd64.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: |
+            bdslibrary-${{ env.VERSION }}-windows-amd64.zip
+          body: |
+            | File                                            | SHA256            |
+            | :---------------------------------------------- | :---------------- |
+            | bdslibrary-${{ env.VERSION }}-windows-amd64.zip | ${{ env.SHA256 }} |
